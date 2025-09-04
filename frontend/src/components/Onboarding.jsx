@@ -27,10 +27,10 @@ function Onboarding({ user, onComplete }) {
     setLoading(true);
     
     try {
-        const response = await fetch(`http://localhost:8080/api/auth/onboarding/${user.userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        const response = await fetch(`https://backend-production-3f95.up.railway.app/api/auth/onboarding/${user.userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
       });
 
       if (response.ok) {
