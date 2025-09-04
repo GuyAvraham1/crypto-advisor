@@ -12,11 +12,11 @@ COPY src src
 # Make gradlew executable and build the application
 RUN chmod +x ./gradlew
 
-# Build and check what was created
-RUN ./gradlew clean build -x test && \
+# Use bootJar specifically and check the result
+RUN ./gradlew clean bootJar && \
     echo "Build completed, checking contents:" && \
     ls -la build/libs/ && \
-    find build/libs -name "*.jar" -exec mv {} app.jar \;
+    mv build/libs/*-SNAPSHOT.jar app.jar
 
 EXPOSE 8080
 
