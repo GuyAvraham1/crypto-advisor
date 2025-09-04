@@ -46,10 +46,10 @@ public class UserController {
     @Autowired
     private FeedbackRepository feedbackRepository;
 
-    @Value("${cryptopanic.api.key:263d57182fcdae784f08194e141971120e959e84}")
+    @Value("${CRYPTOPANIC_API_KEY}")
     private String cryptoPanicApiKey;
 
-    @Value("${openrouter.api.key:your-openrouter-key-here}")
+    @Value("${OPENROUTER_API_KEY}")
     private String openRouterApiKey;
 
     @Value("${reddit.client.id:your-reddit-client-id}")
