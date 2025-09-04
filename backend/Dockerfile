@@ -13,8 +13,8 @@ COPY src src
 RUN chmod +x ./gradlew
 RUN ./gradlew clean build -x test
 
-# Copy the built jar
-RUN cp build/libs/*.jar app.jar
+# Move the jar file to a predictable location
+RUN mv build/libs/*.jar app.jar
 
 EXPOSE 8080
 
