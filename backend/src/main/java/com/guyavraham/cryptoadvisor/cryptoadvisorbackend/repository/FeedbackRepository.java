@@ -16,9 +16,11 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     // Find specific article vote by user
     Optional<Feedback> findByUserIdAndSectionAndArticleId(Long userId, String section, String articleId);
 
-    // Get all votes for a specific article (optional - for analytics)
+    // Get all votes for a specific article (for analytics)
     List<Feedback> findByArticleId(String articleId);
 
-    // Get all feedback by user (optional - for user analytics)
+    // Get all feedback by user (for user analytics)
     List<Feedback> findByUserId(Long userId);
+
+    List<Feedback> findByUserIdAndArticleId(Long userId, String articleId);
 }

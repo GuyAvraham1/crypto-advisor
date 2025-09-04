@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import NewsSection from './NewsSection';
 import './Dashboard.css';
+import Lottie from 'react-lottie';
+import animationData from './loading-animation.json';
 
 function Dashboard({ user, onLogout }) {
   const [dashboardData, setDashboardData] = useState({
@@ -11,15 +13,43 @@ function Dashboard({ user, onLogout }) {
     aiLoading: false
   });
 
+  const lottieOptions = {
+    loop: true,
+    autoplay: true,
+    animationData: animationData,
+    rendererSettings: {
+      preserveAspectRatio: 'xMidYMid slice'
+    }
+  };
+
+  const [sectionVotes, setSectionVotes] = useState({});
+  const [votingLoading, setVotingLoading] = useState({});
+
+  // Helper function to get authorization headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
+  // Helper function to handle token expiration
+  const handleUnauthorized = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    onLogout();
+  };
+
   useEffect(() => {
     fetchDashboardData();
+    fetchSectionVotes();
   }, []);
 
   const fetchDashboardData = async () => {
     setDashboardData(prev => ({ ...prev, loading: true }));
     
     try {
-      // Fetch all data in parallel (excluding news since it's now handled by NewsSection)
       const [pricesData, aiData, memeData] = await Promise.allSettled([
         fetchCryptoPrices(),
         fetchAIInsight(),
@@ -39,9 +69,28 @@ function Dashboard({ user, onLogout }) {
     }
   };
 
+  const fetchSectionVotes = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/auth/section-votes/${user.userId}`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      
+      if (response.ok) {
+        const votes = await response.json();
+        setSectionVotes(votes);
+      }
+    } catch (error) {
+      console.error('Error fetching section votes:', error);
+    }
+  };
+
   const fetchCryptoPrices = async () => {
     try {
-      // Using CoinGecko API - enhanced with user preferences if available
       const coins = user.cryptoInterests && user.cryptoInterests.length > 0 
         ? user.cryptoInterests.join(',').toLowerCase()
         : 'bitcoin,ethereum,cardano,solana';
@@ -67,7 +116,14 @@ function Dashboard({ user, onLogout }) {
   const fetchAIInsight = async () => {
     try {
       console.log('Fetching AI insight from backend...');
-      const response = await fetch(`http://localhost:8080/api/auth/ai-insight/${user.userId}`);
+      const response = await fetch(`http://localhost:8080/api/auth/ai-insight/${user.userId}`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.status === 401) {
+        handleUnauthorized();
+        return 'Authentication required';
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -80,7 +136,6 @@ function Dashboard({ user, onLogout }) {
     } catch (error) {
       console.error('Error fetching AI insight:', error);
       
-      // Enhanced fallback based on user type
       const fallbackInsights = {
         'hodler': [
           "Long-term holding strategies are showing positive trends with increased institutional adoption.",
@@ -108,7 +163,14 @@ function Dashboard({ user, onLogout }) {
   const fetchCryptoMeme = async () => {
     try {
       console.log('Fetching crypto meme from backend (Reddit)...');
-      const response = await fetch('http://localhost:8080/api/auth/crypto-meme');
+      const response = await fetch('http://localhost:8080/api/auth/crypto-meme', {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.status === 401) {
+        handleUnauthorized();
+        return null;
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -121,7 +183,6 @@ function Dashboard({ user, onLogout }) {
     } catch (error) {
       console.error('Error fetching crypto meme from Reddit:', error);
       
-      // Fallback to static memes if Reddit API fails
       const fallbackMemes = [
         {
           url: "https://i.imgflip.com/2/1bij.jpg",
@@ -154,10 +215,12 @@ function Dashboard({ user, onLogout }) {
   };
 
   const handleVote = async (section, vote) => {
+    setVotingLoading(prev => ({ ...prev, [section]: true }));
+
     try {
-      await fetch(`http://localhost:8080/api/auth/feedback`, {
+      const response = await fetch(`http://localhost:8080/api/auth/feedback`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           userId: user.userId,
           section,
@@ -165,28 +228,24 @@ function Dashboard({ user, onLogout }) {
           timestamp: new Date().toISOString()
         })
       });
-      
-      // Enhanced feedback with better UX
-      const button = document.querySelector(`#${section}-${vote}`);
-      const originalText = button.innerHTML;
-      button.innerHTML = vote === 'up' ? '👍 Thanks!' : '👎 Noted!';
-      button.disabled = true;
-      button.style.opacity = '0.6';
-      
-      setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-        button.style.opacity = '1';
-      }, 2000);
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
+      if (response.ok) {
+        setSectionVotes(prev => ({
+          ...prev,
+          [section]: vote
+        }));
+      } else {
+        console.error('Failed to submit vote');
+      }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      // Show error feedback to user
-      const button = document.querySelector(`#${section}-${vote}`);
-      const originalText = button.innerHTML;
-      button.innerHTML = '❌ Error';
-      setTimeout(() => {
-        button.innerHTML = originalText;
-      }, 2000);
+    } finally {
+      setVotingLoading(prev => ({ ...prev, [section]: false }));
     }
   };
 
@@ -200,6 +259,12 @@ function Dashboard({ user, onLogout }) {
         aiInsight: newInsight, 
         aiLoading: false 
       }));
+      
+      setSectionVotes(prev => ({
+        ...prev,
+        ai: undefined
+      }));
+      
     } catch (error) {
       console.error('Error refreshing AI insight:', error);
       setDashboardData(prev => ({ ...prev, aiLoading: false }));
@@ -210,7 +275,7 @@ function Dashboard({ user, onLogout }) {
     return (
       <div className="dashboard-container">
         <div className="loading">
-          <div className="loading-spinner"></div>
+          <Lottie options={lottieOptions} height={150} width={80} />
           Loading your personalized dashboard...
         </div>
       </div>
@@ -229,10 +294,8 @@ function Dashboard({ user, onLogout }) {
       </header>
 
       <div className="dashboard-grid">
-        {/* New NewsSection Component with individual article voting */}
         <NewsSection user={user} />
 
-        {/* Enhanced Coin Prices Section */}
         <div className="dashboard-card">
           <h2>💰 Coin Prices</h2>
           <div className="prices-list">
@@ -250,17 +313,17 @@ function Dashboard({ user, onLogout }) {
           </div>
           <div className="vote-buttons">
             <button 
-              id="prices-up"
+              className={`vote-btn up ${sectionVotes['prices'] === 'up' ? 'voted' : ''}`}
               onClick={() => handleVote('prices', 'up')}
-              className="vote-btn up"
+              disabled={votingLoading['prices']}
               title="This section is helpful"
             >
               👍
             </button>
             <button 
-              id="prices-down"
+              className={`vote-btn down ${sectionVotes['prices'] === 'down' ? 'voted' : ''}`}
               onClick={() => handleVote('prices', 'down')}
-              className="vote-btn down"
+              disabled={votingLoading['prices']}
               title="This section needs improvement"
             >
               👎
@@ -268,7 +331,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        {/* Enhanced AI Insight Section */}
         <div className="dashboard-card">
           <h2>🤖 AI Insight of the Day</h2>
           {dashboardData.aiLoading ? (
@@ -294,27 +356,24 @@ function Dashboard({ user, onLogout }) {
           )}
           <div className="vote-buttons">
             <button 
-              id="ai-up"
+              className={`vote-btn up ${sectionVotes['ai'] === 'up' ? 'voted' : ''}`}
               onClick={() => handleVote('ai', 'up')}
-              className="vote-btn up"
+              disabled={dashboardData.aiLoading || votingLoading['ai']}
               title="This insight is valuable"
-              disabled={dashboardData.aiLoading}
             >
               👍
             </button>
             <button 
-              id="ai-down"
+              className={`vote-btn down ${sectionVotes['ai'] === 'down' ? 'voted' : ''}`}
               onClick={() => handleVote('ai', 'down')}
-              className="vote-btn down"
+              disabled={dashboardData.aiLoading || votingLoading['ai']}
               title="This insight needs improvement"
-              disabled={dashboardData.aiLoading}
             >
               👎
             </button>
           </div>
         </div>
 
-        {/* Enhanced Fun Crypto Meme Section */}
         <div className="dashboard-card">
           <h2>😂 Fun Crypto Meme</h2>
           {dashboardData.meme ? (
@@ -358,17 +417,17 @@ function Dashboard({ user, onLogout }) {
           )}
           <div className="vote-buttons">
             <button 
-              id="meme-up"
+              className={`vote-btn up ${sectionVotes['meme'] === 'up' ? 'voted' : ''}`}
               onClick={() => handleVote('meme', 'up')}
-              className="vote-btn up"
+              disabled={votingLoading['meme']}
               title="This meme is funny"
             >
               👍
             </button>
             <button 
-              id="meme-down"
+              className={`vote-btn down ${sectionVotes['meme'] === 'down' ? 'voted' : ''}`}
               onClick={() => handleVote('meme', 'down')}
-              className="vote-btn down"
+              disabled={votingLoading['meme']}
               title="This meme needs improvement"
             >
               👎

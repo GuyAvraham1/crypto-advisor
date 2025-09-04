@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Register from './components/Register';
 import Onboarding from './components/Onboarding';
@@ -10,26 +10,56 @@ function App() {
   const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(true);
   const [showRegistrationSuccess, setShowRegistrationSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Check for existing token on app startup
+  useEffect(() => {
+    const checkAuthToken = () => {
+      const token = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+      
+      if (token && savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+          setShowLogin(false);
+        } catch (error) {
+          console.error('Error parsing saved user data:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuthToken();
+  }, []);
 
   const handleLogin = (userData) => {
     setUser(userData);
-    setShowRegistrationSuccess(false); // Hide registration success if showing
+    setShowRegistrationSuccess(false);
+    setShowLogin(false);
     console.log('Logged in:', userData);
   };
 
   const handleRegister = (userData) => {
-    // Don't set user immediately - show success page first
     setShowRegistrationSuccess(true);
     console.log('Registered:', userData);
   };
 
   const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
     setUser(null);
     setShowRegistrationSuccess(false);
     setShowLogin(true);
   };
 
   const handleOnboardingComplete = (userData) => {
+    // Update localStorage with new user data
+    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
   };
 
@@ -37,6 +67,24 @@ function App() {
     setShowRegistrationSuccess(false);
     setShowLogin(true);
   };
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="App">
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          fontSize: '18px',
+          color: '#666'
+        }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   // Show registration success page
   if (showRegistrationSuccess) {

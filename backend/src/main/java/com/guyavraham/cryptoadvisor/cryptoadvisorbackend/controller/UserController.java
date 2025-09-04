@@ -1,6 +1,7 @@
 package com.guyavraham.cryptoadvisor.cryptoadvisorbackend.controller;
 
 import com.guyavraham.cryptoadvisor.cryptoadvisorbackend.model.User;
+import com.guyavraham.cryptoadvisor.cryptoadvisorbackend.config.JwtUtil;
 import com.guyavraham.cryptoadvisor.cryptoadvisorbackend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,9 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:3000")
 public class UserController {
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Autowired
     private UserRepository userRepository;
@@ -99,6 +103,20 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/section-votes/{userId}")
+    public ResponseEntity<?> getUserSectionVotes(@PathVariable Long userId) {
+        List<Feedback> userVotes = feedbackRepository.findByUserIdAndArticleId(userId, null);
+
+        Map<String, String> votes = new HashMap<>();
+        for (Feedback feedback : userVotes) {
+            if (feedback.getArticleId() == null) { // Section votes don't have article IDs
+                votes.put(feedback.getSection(), feedback.getVote());
+            }
+        }
+
+        return ResponseEntity.ok(votes);
+    }
+
     @GetMapping("/article-feedback/{userId}")
     public ResponseEntity<?> getUserArticleVotes(@PathVariable Long userId) {
         List<Feedback> userVotes = feedbackRepository.findByUserIdAndSection(userId, "news");
@@ -136,6 +154,7 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
@@ -152,8 +171,12 @@ public class UserController {
                 .body(Map.of("error", "Invalid email or password"));
         }
 
+        // Generate JWT token
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Login successful");
+        response.put("token", token); // Add this line
         response.put("userId", user.getId());
         response.put("email", user.getEmail());
         response.put("name", user.getName());
@@ -216,24 +239,24 @@ public class UserController {
 
                         Map<String, String> article = new HashMap<>();
 
-                        // ✅ Safe ID
+                        // Safe ID
                         if (node.has("id")) {
                             article.put("id", node.get("id").asText());
                         }
 
-                        // ✅ Title
+                        // Title
                         article.put("title", node.get("title").asText());
 
 
-                        // ✅ URL
+                        // URL
                         article.put("url", node.has("url") ? node.get("url").asText() : "#");
 
-                        // ✅ Published time
+                        // Published time
                         article.put("time", node.has("published_at")
                                 ? node.get("published_at").asText()
                                 : "Unknown");
 
-                        // ✅ Source (nested: source.title)
+                        // Source (nested: source.title)
                         if (node.has("source") && node.get("source").has("title")) {
                             article.put("source", node.get("source").get("title").asText());
                         } else {
@@ -257,7 +280,7 @@ public class UserController {
             System.out.println("Exception: " + e.getMessage());
         }
 
-        // 🔴 Fallback dummy data (only if everything fails)
+        // Fallback dummy data (only if everything fails)
         List<Map<String, String>> fallback = Arrays.asList(
                 Map.of("id", "fb-1", "title", "Bitcoin maintains consolidation above $60,000 as institutional interest grows",
                         "url", "https://cointelegraph.com", "time", "2 hours ago", "source", "Cointelegraph"),
@@ -313,6 +336,35 @@ public class UserController {
         }
     }
 
+    @GetMapping("/ai-insight/{userId}")
+    public ResponseEntity<?> getAIInsight(@PathVariable Long userId) {
+        try {
+            // Get user from database
+            Optional<User> userOpt = userRepository.findById(userId);
+
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            User user = userOpt.get();
+
+            // Generate AI insight using the existing method
+            String insight = generateAIInsight(user);
+
+            // Return the insight
+            Map<String, Object> response = new HashMap<>();
+            response.put("insight", insight);
+            response.put("timestamp", System.currentTimeMillis());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.out.println("Error generating AI insight: " + e.getMessage());
+            return ResponseEntity.status(500)
+                .body(Map.of("error", "Failed to generate AI insight"));
+        }
+    }
+
     @GetMapping("/crypto-meme")
     public ResponseEntity<?> getCryptoMeme() {
         try {
@@ -340,7 +392,7 @@ public class UserController {
                 try {
                     List<Map<String, Object>> posts = fetchRedditPosts(subreddit, accessToken);
 
-                    // Collect ALL valid memes instead of returning the first one
+                    // Collect ALL valid memes
                     for (Map<String, Object> post : posts) {
                         if (isValidMemePost(post)) {
                             allValidMemes.add(post);
@@ -483,7 +535,7 @@ public class UserController {
 
         if (!isImage) return false;
 
-        // Check if title suggests it's meme-related (optional filter)
+        // Check if title suggests it's meme-related
         String lowerTitle = title.toLowerCase();
         boolean seemsMemey = lowerTitle.contains("meme") ||
                            lowerTitle.contains("hodl") ||

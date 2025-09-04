@@ -20,7 +20,7 @@ function Login({ onLogin, switchToRegister }) {
     e.preventDefault();
     setLoading(true);
     setError('');
-
+  
     try {
       const response = await fetch('http://localhost:8080/api/auth/login', {
         method: 'POST',
@@ -29,10 +29,12 @@ function Login({ onLogin, switchToRegister }) {
         },
         body: JSON.stringify(formData),
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
+        // Store token in localStorage
+        localStorage.setItem('token', data.token);
         onLogin(data);
       } else {
         setError(data.error || 'Login failed');
