@@ -27,7 +27,7 @@ function Onboarding({ user, onComplete }) {
     setLoading(true);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/auth/onboarding/${user.userId}`, {
+        const response = await fetch(`http://localhost:8080/api/auth/onboarding/${user.userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

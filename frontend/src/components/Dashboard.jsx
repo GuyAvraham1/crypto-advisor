@@ -71,7 +71,7 @@ function Dashboard({ user, onLogout }) {
 
   const fetchSectionVotes = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/auth/section-votes/${user.userId}`, {
+      const response = await fetch(`https://backend-production-3f95.up.railway.app/api/auth/section-votes/${user.userId}`, {
         headers: getAuthHeaders()
       });
       
@@ -116,7 +116,7 @@ function Dashboard({ user, onLogout }) {
   const fetchAIInsight = async () => {
     try {
       console.log('Fetching AI insight from backend...');
-      const response = await fetch(`http://localhost:8080/api/auth/ai-insight/${user.userId}`, {
+      const response = await fetch(`https://backend-production-3f95.up.railway.app/api/auth/ai-insight/${user.userId}`, {
         headers: getAuthHeaders()
       });
       
@@ -163,7 +163,7 @@ function Dashboard({ user, onLogout }) {
   const fetchCryptoMeme = async () => {
     try {
       console.log('Fetching crypto meme from backend (Reddit)...');
-      const response = await fetch('http://localhost:8080/api/auth/crypto-meme', {
+      const response = await fetch('https://backend-production-3f95.up.railway.app/api/auth/crypto-meme', {
         headers: getAuthHeaders()
       });
       
@@ -218,7 +218,7 @@ function Dashboard({ user, onLogout }) {
     setVotingLoading(prev => ({ ...prev, [section]: true }));
 
     try {
-      const response = await fetch(`http://localhost:8080/api/auth/feedback`, {
+      const response = await fetch(`https://backend-production-3f95.up.railway.app/api/auth/feedback`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

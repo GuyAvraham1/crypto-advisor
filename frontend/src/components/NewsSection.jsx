@@ -14,7 +14,7 @@ function NewsSection({ user }) {
 
   const fetchNews = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/auth/crypto-news');
+      const response = await fetch('https://backend-production-3f95.up.railway.app/api/auth/crypto-news');
       if (response.ok) {
         const data = await response.json();
         setNews(data);
@@ -28,7 +28,7 @@ function NewsSection({ user }) {
 
   const fetchUserVotes = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/auth/article-feedback/${user.userId}`);
+      const response = await fetch(`https://backend-production-3f95.up.railway.app/api/auth/article-feedback/${user.userId}`);
       if (response.ok) {
         const votes = await response.json();
         setUserVotes(votes);
@@ -42,7 +42,7 @@ function NewsSection({ user }) {
     setVotingLoading(prev => ({ ...prev, [articleId]: true }));
 
     try {
-      const response = await fetch('http://localhost:8080/api/auth/article-feedback', {
+      const response = await fetch('https://backend-production-3f95.up.railway.app/api/auth/article-feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

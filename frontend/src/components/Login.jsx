@@ -22,7 +22,7 @@ function Login({ onLogin, switchToRegister }) {
     setError('');
   
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch('https://backend-production-3f95.up.railway.app', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
